@@ -21,6 +21,12 @@ RUN apt-get update \
     bat \
   && rm -rf /var/lib/apt/lists/*
 
+# Debian ships bat and fd as batcat and fdfind, so expose the usual names
+RUN ln -s /usr/bin/batcat /usr/local/bin/bat \
+  && ln -s /usr/bin/fdfind /usr/local/bin/fd \
+  && bat --version \
+  && fd --version
+
 RUN npm install --global npm
 
 RUN npm install --global --ignore-scripts @earendil-works/pi-coding-agent
