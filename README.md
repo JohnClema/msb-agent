@@ -81,7 +81,7 @@ scripts/msb-list
 scripts/msb-clean
 # OR Clean them up selectively
 msb stop SANDBOX_ID
-msb rm SANDBOX_ID
+msb remove SANDBOX_ID
 ```
 
 **Inference providers from inside sandbox**
