@@ -1,0 +1,61 @@
+#! /usr/bin/env bash
+
+# Run a headless agent in the first sandbox for this PWD until verification passes
+#
+# Usage: msb-loop "task description"
+#
+# Each iteration is a fresh agent session (no compaction), so state carries
+# over only through the repo and .agents/progress.md.  The loop stops when
+# VERIFY_CMD exits 0 or after MAX_ITERATIONS.
+
+TASK="$*"
+
+# Headless agent command; the prompt is appended as the last argument.
+# --approve trusts project .agents/skills without a prompt; the microVM is the boundary.
+AGENT_CMD="${AGENT_CMD:-pi --print --approve}"
+VERIFY_CMD="${VERIFY_CMD:-.agents/verify.sh}"
+MAX_ITERATIONS="${MAX_ITERATIONS:-5}"
+
+SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+
+if [[ -z "$TASK" ]]; then
+  echo "Usage: msb-loop \"task description\"" >&2
+  exit 2
+fi
+
+if [[ -z "$(msb ps --label "msb.pwd=$PWD" --quiet | head -1)" ]]; then
+  echo "No sandbox found for this PWD, run msb-create first" >&2
+  exit 1
+fi
+
+feedback=""
+
+for ((i = 1; i <= MAX_ITERATIONS; i++)); do
+  echo "=== msb-loop: iteration $i/$MAX_ITERATIONS" >&2
+
+  prompt="$TASK
+
+Read AGENTS.md and .agents/progress.md first. Update .agents/progress.md before you stop.
+When you think you are done, run: $VERIFY_CMD"
+
+  if [[ -n "$feedback" ]]; then
+    prompt="$prompt
+
+The previous attempt did not pass verification. Last lines of \`$VERIFY_CMD\`:
+$feedback"
+  fi
+
+  # shellcheck disable=SC2086
+  "$SCRIPT_DIR/msb-exec" $AGENT_CMD "$prompt"
+
+  if output="$("$SCRIPT_DIR/msb-exec" bash -c "$VERIFY_CMD" 2>&1)"; then
+    echo "=== msb-loop: verification passed after $i iteration(s)" >&2
+    exit 0
+  fi
+
+  feedback="$(tail -40 <<< "$output")"
+  echo "=== msb-loop: verification failed" >&2
+done
+
+echo "=== msb-loop: gave up after $MAX_ITERATIONS iterations" >&2
+exit 1

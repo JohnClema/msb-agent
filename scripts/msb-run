@@ -19,7 +19,7 @@ function startSandbox() {
     --mount-dir "$PWD:$PWD" \
     --workdir "$PWD" \
     --label "msb.pwd=$PWD" \
-    --net "public,host" \
+    --net "${MSB_NET:-public,host}" \
     "$@" \
     "$SANDBOX_IMAGE"
 }
